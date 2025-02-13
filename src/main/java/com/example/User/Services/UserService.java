@@ -8,6 +8,9 @@ import com.example.User.Entity.UserEntity;
 import com.example.User.Repository.MetroCardRepository;
 import com.example.User.Repository.TravelHistoryRepository;
 import com.example.User.Repository.UserRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -17,6 +20,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class UserService {
 
     @Autowired
@@ -29,6 +33,8 @@ public class UserService {
     private TravelHistoryRepository travelHistoryRepository;
     @Autowired
     private KafkaTemplate kafkaTemplate;
+
+    private final ObjectMapper objectMapper=new ObjectMapper();
 
     // Buy Metro Card
     public MetroCardEntity buyMetroCard(buyMetroCardDto buyMetroCardPayload) {
@@ -69,10 +75,17 @@ public class UserService {
         return userRepository.findById(userId);
     }
 
+
     @KafkaListener(topics = "check-in-topic" , groupId = "group_id")
-    public void checkKafka(String name)
+    public void checkKafka(String message)
     {
-        System.out.println(name);
+        try {
+            CheckInDTO checkInDTO = objectMapper.readValue(message, CheckInDTO.class);
+            // Process your DTO here
+            log.info("Received CheckInDTO: {}", checkInDTO);
+        } catch (JsonProcessingException e) {
+            log.error("Error converting string to DTO", e);
+        }
     }
 
 
