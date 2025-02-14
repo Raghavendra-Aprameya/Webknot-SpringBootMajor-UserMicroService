@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -42,7 +43,7 @@ public class UserService {
         if (userOptional.isPresent()) {
             UserEntity user = userOptional.get();
             MetroCardEntity metroCard = new MetroCardEntity();
-            metroCard.setCardNumber(buyMetroCardPayload.getCardNumber());
+            metroCard.setCardNumber(UUID.randomUUID().toString());
             metroCard.setBalance(buyMetroCardPayload.getInitialBalance());
             metroCard.setUser(user);
             return metroCardRepository.save(metroCard);
@@ -75,18 +76,43 @@ public class UserService {
         return userRepository.findById(userId);
     }
 
+//
+//    @KafkaListener(topics = "check-in-topic" , groupId = "group_id")
+//    public void checkKafka(String message)
+//    {
+//        try {
+//            CheckInDTO checkInDTO = objectMapper.readValue(message, CheckInDTO.class);
+//            // Process your DTO here
+//
+//            log.info("Received CheckInDTO: {}", checkInDTO);
+//        } catch (JsonProcessingException e) {
+//            log.error("Error converting string to DTO", e);
+//        }
+//    }
+@KafkaListener(topics = "check-in-topic", groupId = "group_id")
+public void checkKafka(String message) {
+    try {
+        CheckInDTO checkInDTO = objectMapper.readValue(message, CheckInDTO.class);
+        Long userId = checkInDTO.getUserId();
 
-    @KafkaListener(topics = "check-in-topic" , groupId = "group_id")
-    public void checkKafka(String message)
-    {
-        try {
-            CheckInDTO checkInDTO = objectMapper.readValue(message, CheckInDTO.class);
-            // Process your DTO here
-            log.info("Received CheckInDTO: {}", checkInDTO);
-        } catch (JsonProcessingException e) {
-            log.error("Error converting string to DTO", e);
+        Optional<UserEntity> userOptional = userRepository.findById(userId);
+        if (userOptional.isPresent()) {
+            MetroCardEntity metroCard = userOptional.get().getMetroCard();
+            if (metroCard != null && metroCard.getBalance() >= 100) {
+                kafkaTemplate.send("check-in-response-topic", "true");
+                log.info("Check-in valid: User {} has sufficient balance.", userId);
+            } else {
+                kafkaTemplate.send("check-in-response-topic", "false");
+                log.warn("Check-in denied: User {} has insufficient balance.", userId);
+            }
+        } else {
+            kafkaTemplate.send("check-in-response-topic", "false");
+            log.warn("Check-in denied: User {} not found.", userId);
         }
+    } catch (JsonProcessingException e) {
+        log.error("Error parsing check-in message", e);
     }
+}
 
 
 

@@ -4,6 +4,7 @@ import com.example.User.Dto.buyMetroCardDto;
 import com.example.User.Entity.MetroCardEntity;
 import com.example.User.Entity.TravelHistoryEntity;
 import com.example.User.Entity.UserEntity;
+import com.example.User.Services.DependentServices;
 import com.example.User.Services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,8 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+    @Autowired
+    private DependentServices dependentServices;
 
     @PostMapping("/buy-metro-card")
     public ResponseEntity<MetroCardEntity> buyMetroCard(@RequestBody buyMetroCardDto buyMetroCardPayload) {
@@ -37,5 +40,12 @@ public class UserController {
     @GetMapping("/profile/{userId}")
     public ResponseEntity<Optional<UserEntity>> getUserProfile(@PathVariable Long userId) {
         return ResponseEntity.ok(userService.getUserProfile(userId));
+    }
+
+
+    @GetMapping("/validate-card/{userId}")
+    public ResponseEntity<Boolean> validateCard(@PathVariable Long userId) {
+        boolean isValid = dependentServices.validateMetroCard(userId);
+        return ResponseEntity.ok(isValid);
     }
 }
